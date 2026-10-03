@@ -28,11 +28,16 @@ It adopts a **cost-efficient hybrid serverless architecture**, leveraging:
 
 ---
 
-## 🌐 Live Demo
+## 🌐 Live Demo & Testing Accounts
 
 > **Live Demo:** [https://classshare-kqru.vercel.app](https://classshare-kqru.vercel.app)
 
-Recruiters and portfolio visitors can test the live application instantly with **one click** via the built-in **"⚡ Prova rapida con Account Demo"** button on the login screen, without needing to register a personal email.
+Recruiters and portfolio visitors can test the live application instantly with **one click** directly from the login screen using the built-in demo buttons:
+
+| Demo Role | One-Click Button | Capabilities |
+| :--- | :--- | :--- |
+| **Student** | `⚡ Studente Demo` | Upload files, drag-and-drop, paste code snippets, inline previews, filter tags, create and manage personal projects. |
+| **Instructor / Admin** | `⚙️ Admin Demo` | All student capabilities **plus** the complete **Admin Management Panel** (inspect total cloud storage usage, reassign files between projects, reset passwords, and trigger cascading deletions). |
 
 ---
 

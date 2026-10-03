@@ -13,6 +13,8 @@ const ALLOWED_EMAILS = envEmails.split(',').map(e => e.trim().toLowerCase()).fil
 const ALLOWED_DOMAIN = (import.meta.env.VITE_ALLOWED_DOMAIN || '').trim().toLowerCase()
 const DEMO_EMAIL = (import.meta.env.VITE_DEMO_EMAIL || 'demo@classshare.app').trim()
 const DEMO_PASSWORD = (import.meta.env.VITE_DEMO_PASSWORD || 'ClassShareDemo2025!').trim()
+const DEMO_ADMIN_EMAIL = (import.meta.env.VITE_DEMO_ADMIN_EMAIL || 'admin@classshare.app').trim()
+const DEMO_ADMIN_PASSWORD = (import.meta.env.VITE_DEMO_ADMIN_PASSWORD || 'ClassShareAdmin2025!').trim()
 
 /**
  * Checks if the given email is permitted to log in or register.
@@ -22,6 +24,7 @@ const DEMO_PASSWORD = (import.meta.env.VITE_DEMO_PASSWORD || 'ClassShareDemo2025
 function isEmailAllowed(email) {
   const normalized = email.toLowerCase().trim()
   if (normalized === DEMO_EMAIL.toLowerCase()) return true
+  if (normalized === DEMO_ADMIN_EMAIL.toLowerCase()) return true
   if (ALLOWED_EMAILS.length > 0 && !ALLOWED_EMAILS.includes(normalized)) return false
   if (ALLOWED_DOMAIN && !normalized.endsWith(ALLOWED_DOMAIN)) return false
   return true
@@ -83,23 +86,23 @@ export default function AuthPage() {
     setLoading(false)
   }
 
-  const handleDemoLogin = async () => {
+  const handleQuickLogin = async (targetEmail, targetPassword, displayName) => {
     setLoading(true)
     setError('')
     try {
       try {
-        await signInWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD)
+        await signInWithEmailAndPassword(auth, targetEmail, targetPassword)
       } catch (loginErr) {
         if (
           loginErr.code === 'auth/user-not-found' ||
           loginErr.code === 'auth/invalid-credential'
         ) {
-          const cred = await createUserWithEmailAndPassword(auth, DEMO_EMAIL, DEMO_PASSWORD)
-          await updateProfile(cred.user, { displayName: 'Visitatore Demo' })
+          const cred = await createUserWithEmailAndPassword(auth, targetEmail, targetPassword)
+          await updateProfile(cred.user, { displayName })
           await setDoc(doc(db, 'profiles', cred.user.uid), {
             uid: cred.user.uid,
-            name: 'Visitatore Demo',
-            email: DEMO_EMAIL,
+            name: displayName,
+            email: targetEmail,
             fileCount: 0,
             createdAt: serverTimestamp()
           })
@@ -108,7 +111,7 @@ export default function AuthPage() {
         }
       }
     } catch (err) {
-      setError('Errore accesso demo: ' + err.message)
+      setError(`Errore accesso ${displayName}: ` + err.message)
     }
     setLoading(false)
   }
@@ -188,17 +191,29 @@ export default function AuthPage() {
           <span style={s.dividerLine} />
         </div>
 
-        <button
-          type="button"
-          style={s.demoBtn}
-          onClick={handleDemoLogin}
-          disabled={loading}
-        >
-          ⚡ Prova rapida con Account Demo
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <button
+            type="button"
+            style={s.demoBtn}
+            onClick={() => handleQuickLogin(DEMO_EMAIL, DEMO_PASSWORD, 'Studente Demo')}
+            disabled={loading}
+            title="Entra come studente per visualizzare e caricare file"
+          >
+            ⚡ Studente Demo
+          </button>
+          <button
+            type="button"
+            style={s.demoAdminBtn}
+            onClick={() => handleQuickLogin(DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD, 'Docente Admin Demo')}
+            disabled={loading}
+            title="Entra come amministratore per testare il Pannello Admin completo"
+          >
+            ⚙️ Admin Demo
+          </button>
+        </div>
 
         <p style={s.hint}>
-          Accesso riservato alla classe. I recruiter possono usare il pulsante demo per esplorare l'app.
+          Accesso classe. I recruiter possono usare i pulsanti demo (Studente o Admin) per testare l'intera app.
         </p>
 
         <div style={{ textAlign: 'center', marginTop: '16px' }}>
@@ -337,13 +352,26 @@ const s = {
     color: '#a99bfc',
     border: '1px solid rgba(124, 109, 250, 0.3)',
     borderRadius: '8px',
-    padding: '11px',
-    fontSize: '13px',
+    padding: '11px 6px',
+    fontSize: '12px',
     fontWeight: '500',
     cursor: 'pointer',
     fontFamily: 'DM Sans, sans-serif',
-    width: '100%',
-    transition: 'all 0.15s'
+    transition: 'all 0.15s',
+    textAlign: 'center'
+  },
+  demoAdminBtn: {
+    background: 'rgba(251, 146, 60, 0.12)',
+    color: '#fb923c',
+    border: '1px solid rgba(251, 146, 60, 0.35)',
+    borderRadius: '8px',
+    padding: '11px 6px',
+    fontSize: '12px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif',
+    transition: 'all 0.15s',
+    textAlign: 'center'
   },
   hint: { marginTop: '20px', fontSize: '12px', color: '#4a4a55', textAlign: 'center', lineHeight: '1.4' },
   privacyLink: {

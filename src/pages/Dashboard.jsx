@@ -127,6 +127,12 @@ export default function Dashboard() {
             </div>
             <span style={{ fontSize: '9px' }}>Profilo</span>
           </button>
+          {isAdmin && (
+            <button style={s.bottomNavItem} onClick={() => setShowAdmin(true)}>
+              <span style={{ fontSize: '16px' }}>⚙️</span>
+              <span style={{ fontSize: '9px' }}>Admin</span>
+            </button>
+          )}
         </nav>
       ) : (
         <aside style={s.sidebar}>
