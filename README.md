@@ -85,7 +85,7 @@ flowchart TD
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/badalirek-ux/classshare.git
+git clone https://github.com/nicobada/classshare.git
 cd classshare
 ```
 
@@ -177,5 +177,5 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ---
 
 <div align="center">
-  <sub>Developed with ❤️ by <a href="https://github.com/badalirek-ux">Nicola Badalì</a></sub>
+  <sub>Developed with ❤️ by <a href="https://github.com/nicobada">Nicola Badalì</a></sub>
 </div>
