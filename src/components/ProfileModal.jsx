@@ -4,6 +4,7 @@ import { doc, deleteDoc, updateDoc, increment } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { supabase, STORAGE_BUCKET } from '../supabase'
 import { fmtSize, fmtDate, avatarColor, initials } from '../utils/fileHelpers'
+import { logAuditEvent } from '../utils/auditLogger'
 
 /**
  * User profile management modal allowing password changes, file history review,
@@ -75,10 +76,18 @@ export default function ProfileModal({ user, profile, files, onClose }) {
         await deleteDoc(doc(db, 'files', f.id))
       }
 
-      // 3. Delete user profile document from Firestore
+      // 3. Log GDPR account deletion event before profile deletion
+      await logAuditEvent({
+        action: 'GDPR_FORGOTTEN',
+        actorName: profile?.name || user.email,
+        actorEmail: user.email,
+        details: `Esercitato diritto all'oblio (Art. 17 GDPR): rimossi profilo e ${myFiles.length} file dallo storage`
+      })
+
+      // 4. Delete user profile document from Firestore
       await deleteDoc(doc(db, 'profiles', user.uid))
 
-      // 4. Delete user account from Firebase Authentication
+      // 5. Delete user account from Firebase Authentication
       await deleteUser(user)
 
       onClose()

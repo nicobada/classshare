@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
+import { logAuditEvent } from '../utils/auditLogger'
 
 const CATEGORIES = ['Codice', 'Documenti', 'Immagini', 'Altro']
 const LANGUAGES = ['js','jsx','ts','tsx','html','css','php','py','java','c','cpp','json','sql','sh','md','txt','vue','xml']
@@ -145,6 +146,12 @@ export default function UploadModal({ onClose, onSuccess, defaultProjectId = nul
         createdAt: serverTimestamp()
       })
       finalProjectId = projRef.id
+      logAuditEvent({
+        action: 'PROJECT_CREATE',
+        actorName: profile?.name || user.email,
+        actorEmail: user.email,
+        details: `Creato nuovo progetto "${projectName.trim()}"`
+      })
     }
 
     let successCount = 0
@@ -168,6 +175,12 @@ export default function UploadModal({ onClose, onSuccess, defaultProjectId = nul
           uploaderName: profile?.name || user.email,
           projectId: finalProjectId || null,
           createdAt: serverTimestamp()
+        })
+        logAuditEvent({
+          action: 'FILE_UPLOAD',
+          actorName: profile?.name || user.email,
+          actorEmail: user.email,
+          details: `Caricato "${file.name}" (${fmt(file.size)}) in ${category}`
         })
         setUploadStatus(prev => prev.map((s, idx) => idx === i ? 'done' : s))
         successCount++
@@ -211,6 +224,12 @@ export default function UploadModal({ onClose, onSuccess, defaultProjectId = nul
         createdAt: serverTimestamp()
       })
       await updateDoc(doc(db, 'profiles', user.uid), { fileCount: increment(1) })
+      logAuditEvent({
+        action: 'CODE_SHARE',
+        actorName: profile?.name || user.email,
+        actorEmail: user.email,
+        details: `Condiviso snippet "${fileName}" (${fmt(blob.size)})`
+      })
       setUploading(false); onSuccess(); onClose()
     } catch (err) {
       setError('Errore: ' + err.message); setUploading(false)

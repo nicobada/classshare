@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   collection, getDocs, deleteDoc, doc,
-  query, orderBy, updateDoc, increment
+  query, orderBy, updateDoc, increment, limit
 } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { supabase, STORAGE_BUCKET } from '../supabase'
 import { sendPasswordResetEmail } from 'firebase/auth'
+import { logAuditEvent, getActionBadge } from '../utils/auditLogger'
 
-import { useEffect } from 'react'
 /** @param {number} b - bytes */
 function fmtSize(b) {
   if (!b) return '0 B'
@@ -27,6 +27,7 @@ export default function AdminPanel({ onClose }) {
   const [files, setFiles] = useState([])
   const [users, setUsers] = useState([])
   const [projects, setProjects] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [msgType, setMsgType] = useState('ok')
@@ -50,15 +51,17 @@ export default function AdminPanel({ onClose }) {
     const loadData = async () => {
       setLoading(true)
       try {
-        const [fSnap, uSnap, pSnap] = await Promise.all([
+        const [fSnap, uSnap, pSnap, lSnap] = await Promise.all([
           getDocs(query(collection(db, 'files'), orderBy('createdAt', 'desc'))),
           getDocs(collection(db, 'profiles')),
-          getDocs(query(collection(db, 'projects'), orderBy('createdAt', 'desc')))
+          getDocs(query(collection(db, 'projects'), orderBy('createdAt', 'desc'))),
+          getDocs(query(collection(db, 'audit_logs'), orderBy('createdAt', 'desc'), limit(50)))
         ])
         if (!mounted) return
         setFiles(fSnap.docs.map(d => ({ id: d.id, ...d.data() })))
         setUsers(uSnap.docs.map(d => ({ id: d.id, ...d.data() })))
         setProjects(pSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+        setAuditLogs(lSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       } catch (err) {
         if (mounted) notify('Errore nel caricamento dati: ' + err.message, 'err')
       }
@@ -70,11 +73,18 @@ export default function AdminPanel({ onClose }) {
 
   const deleteFile = async (file) => {
     if (!confirm(`Eliminare "${file.name}"?`)) return
-    try { if (file.storagePath) await supabase.storage.from(STORAGE_BUCKET).remove([file.storagePath]) } catch (err) {
+    try {
+      if (file.storagePath) await supabase.storage.from(STORAGE_BUCKET).remove([file.storagePath])
+    } catch (err) {
       console.error('Storage delete error:', err.message)
     }
     await deleteDoc(doc(db, 'files', file.id))
     setFiles(prev => prev.filter(x => x.id !== file.id))
+    await logAuditEvent({
+      action: 'FILE_DELETE',
+      actorName: 'Admin',
+      details: `Eliminato file "${file.name}" dall'amministratore`
+    })
     notify('File eliminato.')
   }
 
@@ -86,12 +96,22 @@ export default function AdminPanel({ onClose }) {
     for (const f of files) await deleteDoc(doc(db, 'files', f.id))
     setFiles([])
     setLoading(false)
+    await logAuditEvent({
+      action: 'ADMIN_PURGE',
+      actorName: 'Admin',
+      details: `Eliminati tutti i ${files.length} file dall'amministratore`
+    })
     notify('Tutti i file eliminati.')
   }
 
   const sendReset = async (email) => {
     try {
       await sendPasswordResetEmail(auth, email)
+      await logAuditEvent({
+        action: 'ADMIN_RESET_PWD',
+        actorName: 'Admin',
+        details: `Inviata email reset password a ${email}`
+      })
       notify(`Email di reset inviata a ${email}`)
     } catch (err) {
       notify('Errore: ' + err.message, 'err')
@@ -109,19 +129,18 @@ export default function AdminPanel({ onClose }) {
       await deleteDoc(doc(db, 'profiles', u.id))
       setUsers(prev => prev.filter(x => x.id !== u.id))
       setFiles(prev => prev.filter(f => f.uploadedBy !== u.id))
-      notify(`Account di ${u.name} eliminato. Lo studente può re-registrarsi con una nuova email.`)
+      await logAuditEvent({
+        action: 'ADMIN_DELETE_USER',
+        actorName: 'Admin',
+        details: `Eliminato account utente ${u.name} (${u.email}) e ${userFiles.length} file associati`
+      })
+      notify(`Account di ${u.name} eliminato.`)
     } catch (err) {
       notify('Errore: ' + err.message, 'err')
     }
     setLoading(false)
   }
 
-  /**
-   * Assigns a file to a project chosen by the admin.
-   * Removes from old project count if previously assigned.
-   * @param {object} file - The file to reassign.
-   * @param {string} targetProjectId - Destination project ID.
-   */
   const assignFileToProject = async (file, targetProjectId) => {
     if (!targetProjectId) { notify('Seleziona un progetto.', 'err'); return }
     try {
@@ -133,6 +152,11 @@ export default function AdminPanel({ onClose }) {
       setFiles(prev => prev.map(f => f.id === file.id ? { ...f, projectId: targetProjectId } : f))
       setAssigningFile(null)
       setSelectedProjectId('')
+      await logAuditEvent({
+        action: 'ADMIN_REASSIGN',
+        actorName: 'Admin',
+        details: `Riassegnato file "${file.name}" al progetto ID: ${targetProjectId}`
+      })
       notify('File assegnato al progetto.')
     } catch (err) {
       notify('Errore: ' + err.message, 'err')
@@ -153,12 +177,6 @@ export default function AdminPanel({ onClose }) {
     }
   }
 
-  /**
-   * Renames a project by updating its name and optional description in Firestore.
-   * @param {string} projectId - The Firestore document ID of the project.
-   * @param {string} newName - The new project name.
-   * @param {string} newDesc - The new project description.
-   */
   const renameProject = async (projectId, newName, newDesc) => {
     if (!newName.trim()) { notify('Il nome non può essere vuoto.', 'err'); return }
     try {
@@ -168,6 +186,11 @@ export default function AdminPanel({ onClose }) {
       })
       setProjects(prev => prev.map(p => p.id === projectId ? { ...p, name: newName.trim(), description: newDesc.trim() } : p))
       setEditingProject(null)
+      await logAuditEvent({
+        action: 'PROJECT_CREATE',
+        actorName: 'Admin',
+        details: `Rinominato progetto ${projectId} in "${newName.trim()}"`
+      })
       notify('Progetto rinominato.')
     } catch (err) {
       notify('Errore: ' + err.message, 'err')
@@ -175,7 +198,6 @@ export default function AdminPanel({ onClose }) {
   }
 
   const totalSize = files.reduce((acc, f) => acc + (f.size || 0), 0)
-
 
   return (
     <div style={s.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
@@ -201,11 +223,11 @@ export default function AdminPanel({ onClose }) {
           <button style={tab === 'files' ? s.tabActive : s.tabBtn} onClick={() => setTab('files')}>File ({files.length})</button>
           <button style={tab === 'users' ? s.tabActive : s.tabBtn} onClick={() => setTab('users')}>Utenti ({users.length})</button>
           <button style={tab === 'projects' ? s.tabActive : s.tabBtn} onClick={() => setTab('projects')}>Progetti ({projects.length})</button>
+          <button style={tab === 'logs' ? s.tabActive : s.tabBtn} onClick={() => setTab('logs')}>🛡️ Audit Log ({auditLogs.length})</button>
         </div>
 
         {loading ? (
           <p style={{ fontSize: '13px', color: '#6b6b75', padding: '1rem 0' }}>Caricamento...</p>
-
         ) : tab === 'files' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflow: 'hidden' }}>
             {files.length > 0 && (
@@ -238,7 +260,6 @@ export default function AdminPanel({ onClose }) {
               }
             </div>
           </div>
-
         ) : tab === 'users' ? (
           <div style={s.list}>
             {users.length === 0
@@ -257,8 +278,7 @@ export default function AdminPanel({ onClose }) {
               ))
             }
           </div>
-
-        ) : (
+        ) : tab === 'projects' ? (
           <div style={s.list}>
             {projects.length === 0
               ? <p style={{ fontSize: '13px', color: '#6b6b75' }}>Nessun progetto.</p>
@@ -268,7 +288,6 @@ export default function AdminPanel({ onClose }) {
                 return (
                   <div key={p.id} style={{ ...s.row, flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
                     {isEditing ? (
-                      // Inline rename form
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <input style={s.input} value={editName}
                           onChange={e => setEditName(e.target.value)}
@@ -303,6 +322,11 @@ export default function AdminPanel({ onClose }) {
                                 await deleteDoc(doc(db, 'projects', p.id))
                                 setProjects(prev => prev.filter(x => x.id !== p.id))
                                 setFiles(prev => prev.filter(f => f.projectId !== p.id))
+                                await logAuditEvent({
+                                  action: 'PROJECT_DELETE',
+                                  actorName: 'Admin',
+                                  details: `Eliminato progetto "${p.name}" e ${projectFiles.length} file associati`
+                                })
                                 notify(`Progetto "${p.name}" eliminato.`)
                               } catch (err) {
                                 notify('Errore: ' + err.message, 'err')
@@ -333,6 +357,47 @@ export default function AdminPanel({ onClose }) {
                 )
               })
             }
+          </div>
+        ) : (
+          /* ── AUDIT LOG TAB ── */
+          <div style={s.list}>
+            {auditLogs.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#6b6b75', padding: '1rem 0' }}>
+                Nessun evento registrato nell'audit log.
+              </p>
+            ) : (
+              auditLogs.map(log => {
+                const badge = getActionBadge(log.action)
+                return (
+                  <div key={log.id} style={s.row}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            fontFamily: 'DM Mono, monospace',
+                            padding: '2px 7px',
+                            borderRadius: '4px',
+                            background: badge.bg,
+                            color: badge.color,
+                            border: `1px solid ${badge.border}`
+                          }}
+                        >
+                          {badge.label}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#6b6b75' }}>
+                          {fmtDate(log.createdAt)} · {log.actorName} {log.actorEmail ? `(${log.actorEmail})` : ''}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#e8e6e0', marginTop: '2px' }}>
+                        {log.details}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
           </div>
         )}
 
@@ -372,9 +437,9 @@ const s = {
   statVal: { fontSize: '20px', fontWeight: '600', color: '#e8e6e0' },
   statLbl: { fontSize: '11px', color: '#4a4a55', marginTop: '3px' },
   msgBox: { fontSize: '13px', borderRadius: '8px', padding: '10px 14px' },
-  tabs: { display: 'flex', gap: '4px', background: '#0e0e10', borderRadius: '8px', padding: '4px' },
-  tabBtn: { flex: 1, padding: '7px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: 'transparent', color: '#6b6b75', fontSize: '12px', fontFamily: 'DM Sans,sans-serif' },
-  tabActive: { flex: 1, padding: '7px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: '#2a2a2f', color: '#e8e6e0', fontSize: '12px', fontWeight: '500', fontFamily: 'DM Sans,sans-serif' },
+  tabs: { display: 'flex', gap: '4px', background: '#0e0e10', borderRadius: '8px', padding: '4px', flexWrap: 'wrap' },
+  tabBtn: { flex: 1, minWidth: '90px', padding: '7px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: 'transparent', color: '#6b6b75', fontSize: '12px', fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap' },
+  tabActive: { flex: 1, minWidth: '90px', padding: '7px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: '#2a2a2f', color: '#e8e6e0', fontSize: '12px', fontWeight: '500', fontFamily: 'DM Sans,sans-serif', whiteSpace: 'nowrap' },
   list: { overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px' },
   row: { display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', background: '#0e0e10', borderRadius: '8px' },
   rowName: { fontSize: '13px', fontWeight: '500', color: '#e8e6e0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },

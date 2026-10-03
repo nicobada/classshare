@@ -37,7 +37,7 @@ Recruiters and portfolio visitors can test the live application instantly with *
 | Demo Role | One-Click Button | Capabilities |
 | :--- | :--- | :--- |
 | **Student** | `⚡ Studente Demo` | Upload files, drag-and-drop, paste code snippets, inline previews, filter tags, create and manage personal projects. |
-| **Instructor / Admin** | `⚙️ Admin Demo` | All student capabilities **plus** the complete **Admin Management Panel** (inspect total cloud storage usage, reassign files between projects, reset passwords, and trigger cascading deletions). |
+| **Instructor / Admin** | `⚙️ Admin Demo` | All student capabilities **plus** the complete **Admin Management Panel** (inspect total cloud storage usage, reassign files between projects, view the **🛡️ GDPR Audit Trail**, reset passwords, and trigger cascading deletions). |
 
 ---
 
@@ -51,7 +51,8 @@ Recruiters and portfolio visitors can test the live application instantly with *
   - **PDF Documents:** Embedded interactive PDF viewer.
 - **📂 Project Workspaces:** Group files into course modules or project assignments with folder management.
 - **🏷 Dynamic Tagging & Instant Filtering:** Filter files by category (`Codice`, `Documenti`, `Immagini`, `Altro`), click tags to filter in real-time, or use universal search.
-- **⚙️ Role-Based Admin Panel:** Built with Firebase Admin SDK (`customUserClaims`). Allows designated admins to inspect overall storage usage, reassign files between projects, reset user passwords, and perform cascading deletions across storage and database.
+- **⚙️ Role-Based Admin Panel:** Built with Firebase Admin SDK (`customUserClaims`). Allows designated admins to inspect overall storage usage, reassign files between projects, reset user passwords, inspect the live audit log, and perform cascading deletions across storage and database.
+- **🛡️ Immutable Security & GDPR Audit Trail:** Append-only activity logging for administrative actions, data erasures (Right to be Forgotten), and file lifecycle events with visual action badges.
 - **📱 Fully Responsive:** Dark mode user experience optimized for desktop and mobile, with bottom-sheet navigation on smaller viewports.
 
 ---
@@ -183,6 +184,7 @@ ClassShare is engineered in strict accordance with the **EU General Data Protect
 - **🧩 Data Minimization (Art. 5 GDPR):** Only strictly essential identifiers are stored: display name, email, and files explicitly shared by the user. No telemetry, third-party marketing, or personal profiling.
 - **🍪 Zero Third-Party Trackers:** No analytics beacons, tracking pixels, or marketing cookies. Only secure first-party authentication session tokens are utilized, eliminating intrusive cookie banner requirements under European law.
 - **🗑️ Right to Erasure / "Right to be Forgotten" (Art. 17 GDPR):** Users have full self-service control. Directly from their profile, users can permanently delete their authentication account, Firestore profile metadata, and all uploaded files from cloud object storage in a cascading purge.
+- **🛡️ Immutable Security & Audit Trail (Art. 30 & 32 GDPR):** Real-time activity audit log documenting sensitive operations (account erasures, file removals, project reassignments) accessible in the Admin Panel for verifiable compliance and accountability.
 - **🔒 Data Security & Infrastructure (Art. 32 GDPR):** Transport security via TLS/HTTPS, encrypted storage at rest (Google Cloud & Supabase EU data centers), and Granular Security Rules enforcing ownership verification on all read/write/delete operations.
 - **📜 Transparent Privacy Notice:** Built-in modal disclosure accessible from both the authentication screen and the main dashboard.
 

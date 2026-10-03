@@ -13,6 +13,7 @@ import PreviewModal from '../components/PreviewModal'
 import EditModal from '../components/EditModal'
 import ProfileModal from '../components/ProfileModal'
 import PrivacyModal from '../components/PrivacyModal'
+import { logAuditEvent } from '../utils/auditLogger'
 import {
   NAV_ITEMS, CODE_EXTS, IMAGE_EXTS, CAT_COLORS, EXT_LABELS,
   getExt, fmtSize, fmtDate, initials, avatarColor, forceDownload
@@ -81,6 +82,12 @@ export default function Dashboard() {
       await updateDoc(doc(db, 'projects', file.projectId), { fileCount: increment(-1) })
     }
     await deleteDoc(doc(db, 'files', file.id))
+    await logAuditEvent({
+      action: 'FILE_DELETE',
+      actorName: profile?.name || user?.email,
+      actorEmail: user?.email,
+      details: `Eliminato file "${file.name}"`
+    })
   }
 
   const handleDeleteProject = async (project) => {
@@ -90,6 +97,12 @@ export default function Dashboard() {
     if (paths.length) await supabase.storage.from(STORAGE_BUCKET).remove(paths)
     for (const f of pFiles) await deleteDoc(doc(db, 'files', f.id))
     await deleteDoc(doc(db, 'projects', project.id))
+    await logAuditEvent({
+      action: 'PROJECT_DELETE',
+      actorName: profile?.name || user?.email,
+      actorEmail: user?.email,
+      details: `Eliminato progetto "${project.name}" e ${pFiles.length} file associati`
+    })
   }
 
   return (
