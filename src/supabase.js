@@ -16,5 +16,5 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-// Nome del bucket che hai creato su Supabase
-export const STORAGE_BUCKET = 'files'
+// Nome del bucket di storage (configurabile da env, default a 'demo-files')
+export const STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_BUCKET || 'demo-files'
