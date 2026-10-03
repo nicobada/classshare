@@ -1,0 +1,16 @@
+services:
+  classshare-app:
+    # 1. Indica a Docker di cercare il Dockerfile nella cartella corrente (.) per buildare l'immagine
+    build: .
+    
+    # 2. Assegna un nome chiaro al container visibile su Docker Desktop
+    container_name: classshare_frontend
+    
+    # 3. Mappatura delle porte: colleghiamo la porta 3003 di Windows alla porta 5173 del container
+    ports:
+      - "3003:5173"
+    
+    # 4. Il motore del tempo reale (I Volumi)
+    volumes:
+      - .:/app           # Sincronizza tutta la tua cartella locale con la cartella /app del container
+      - /app/node_modules # Protegge i pacchetti Linux impedendo a Windows di sovrascriverli
