@@ -175,8 +175,3 @@ service cloud.firestore {
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
----
-
-<div align="center">
-  <sub>Developed with ❤️ by <a href="https://github.com/nicobada">Nicola Badalì</a></sub>
-</div>
