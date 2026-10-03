@@ -9,9 +9,10 @@
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%26%20Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Storage-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-classshare--kqru.vercel.app-000000?style=flat&logo=vercel&logoColor=white)](https://classshare-kqru.vercel.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-[🌐 Live Demo](#-live-demo) • [✨ Key Features](#-key-features) • [🏛 Architecture](#-architecture) • [🚀 Quick Start](#-quick-start) • [🛡 Security](#-security--access-control)
+[🌐 Live Demo](https://classshare-kqru.vercel.app/) • [✨ Key Features](#-key-features) • [🏛 Architecture](#-architecture) • [🚀 Quick Start](#-quick-start) • [🛡 Security](#-security--access-control)
 
 </div>
 
@@ -29,7 +30,7 @@ It adopts a **cost-efficient hybrid serverless architecture**, leveraging:
 
 ## 🌐 Live Demo
 
-> **Demo URL:** [https://classshare-demo.vercel.app](https://classshare-demo.vercel.app) *(Deploy your own in 2 minutes)*
+> **Live Demo:** [https://classshare-kqru.vercel.app](https://classshare-kqru.vercel.app)
 
 Recruiters and portfolio visitors can test the live application instantly with **one click** via the built-in **"⚡ Prova rapida con Account Demo"** button on the login screen, without needing to register a personal email.
 
