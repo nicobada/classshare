@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../firebase'
+import PrivacyModal from '../components/PrivacyModal'
 
 const envEmails = import.meta.env.VITE_ALLOWED_EMAILS || ''
 const ALLOWED_EMAILS = envEmails.split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
@@ -31,6 +32,7 @@ export default function AuthPage() {
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -198,6 +200,18 @@ export default function AuthPage() {
         <p style={s.hint}>
           Accesso riservato alla classe. I recruiter possono usare il pulsante demo per esplorare l'app.
         </p>
+
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <button
+            type="button"
+            style={s.privacyLink}
+            onClick={() => setShowPrivacy(true)}
+          >
+            🛡️ Informativa Privacy & GDPR
+          </button>
+        </div>
+
+        {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
       </div>
     </div>
   )
@@ -331,5 +345,14 @@ const s = {
     width: '100%',
     transition: 'all 0.15s'
   },
-  hint: { marginTop: '20px', fontSize: '12px', color: '#4a4a55', textAlign: 'center', lineHeight: '1.4' }
+  hint: { marginTop: '20px', fontSize: '12px', color: '#4a4a55', textAlign: 'center', lineHeight: '1.4' },
+  privacyLink: {
+    background: 'none',
+    border: 'none',
+    color: '#6b6b75',
+    fontSize: '11px',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    fontFamily: 'DM Sans, sans-serif'
+  }
 }

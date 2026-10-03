@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { signOut, updatePassword } from 'firebase/auth'
-import { auth } from '../firebase'
+import { signOut, updatePassword, deleteUser } from 'firebase/auth'
+import { doc, deleteDoc, updateDoc, increment } from 'firebase/firestore'
+import { auth, db } from '../firebase'
+import { supabase, STORAGE_BUCKET } from '../supabase'
 import { fmtSize, fmtDate, avatarColor, initials } from '../utils/fileHelpers'
 
 /**
- * User profile management modal allowing password changes and file history review.
+ * User profile management modal allowing password changes, file history review,
+ * and GDPR-compliant self-service account deletion (Right to Erasure).
  * @param {{ user: object, profile: object, files: Array, onClose: () => void }} props
  */
 export default function ProfileModal({ user, profile, files, onClose }) {
@@ -15,6 +18,11 @@ export default function ProfileModal({ user, profile, files, onClose }) {
   const [pwdMsg, setPwdMsg] = useState('')
   const [pwdError, setPwdError] = useState('')
   const [pwdLoading, setPwdLoading] = useState(false)
+
+  // GDPR Account Deletion state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const handleChangePwd = async () => {
     setPwdMsg('')
@@ -42,6 +50,47 @@ export default function ProfileModal({ user, profile, files, onClose }) {
       }
     }
     setPwdLoading(false)
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true)
+    setDeleteError('')
+
+    try {
+      // 1. Delete all user files from Supabase Storage
+      const paths = myFiles.filter(f => f.storagePath).map(f => f.storagePath)
+      if (paths.length > 0) {
+        await supabase.storage.from(STORAGE_BUCKET).remove(paths)
+      }
+
+      // 2. Cascade delete file documents from Firestore
+      for (const f of myFiles) {
+        if (f.projectId) {
+          try {
+            await updateDoc(doc(db, 'projects', f.projectId), { fileCount: increment(-1) })
+          } catch {
+            // Ignore if project was already deleted
+          }
+        }
+        await deleteDoc(doc(db, 'files', f.id))
+      }
+
+      // 3. Delete user profile document from Firestore
+      await deleteDoc(doc(db, 'profiles', user.uid))
+
+      // 4. Delete user account from Firebase Authentication
+      await deleteUser(user)
+
+      onClose()
+    } catch (err) {
+      console.error('Account deletion error:', err)
+      if (err.code === 'auth/requires-recent-login') {
+        setDeleteError('Per sicurezza, questa operazione richiede una sessione recente. Esci dall\'account, riaccedi e riprova.')
+      } else {
+        setDeleteError('Errore durante la cancellazione: ' + err.message)
+      }
+      setDeleteLoading(false)
+    }
   }
 
   return (
@@ -111,7 +160,7 @@ export default function ProfileModal({ user, profile, files, onClose }) {
         )}
 
         <div style={{ marginTop: '16px' }}>
-          <p style={s.sectionTitle}>I miei file</p>
+          <p style={s.sectionTitle}>I miei file ({myFiles.length})</p>
           {myFiles.length === 0 ? (
             <p style={{ fontSize: '13px', color: '#6b6b75' }}>Nessun file caricato ancora.</p>
           ) : (
@@ -125,6 +174,60 @@ export default function ProfileModal({ user, profile, files, onClose }) {
                   <span style={s.categoryBadge}>{f.category}</span>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* GDPR Privacy & Account Deletion Section */}
+        <div style={s.gdprSection}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ fontSize: '12px', fontWeight: '500', color: '#9b9ba8' }}>
+                🛡️ Diritto all'oblio (GDPR Art. 17)
+              </p>
+              <p style={{ fontSize: '11px', color: '#4a4a55', marginTop: '2px' }}>
+                Puoi cancellare definitivamente il tuo account e tutti i tuoi file dal cloud.
+              </p>
+            </div>
+            {!showDeleteConfirm && (
+              <button
+                style={s.btnDangerOutline}
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Elimina account
+              </button>
+            )}
+          </div>
+
+          {showDeleteConfirm && (
+            <div style={s.deleteConfirmBox}>
+              <p style={{ fontSize: '12px', color: '#f87171', fontWeight: '500' }}>
+                Confermi l'eliminazione definitiva?
+              </p>
+              <p style={{ fontSize: '11px', color: '#9b9ba8', marginTop: '4px', lineHeight: '1.4' }}>
+                Questa azione eliminerà irrevocabilmente il tuo account, il tuo profilo e tutti i {myFiles.length} file caricati dallo storage.
+              </p>
+              {deleteError && (
+                <p style={{ fontSize: '11px', color: '#f87171', marginTop: '6px' }}>
+                  {deleteError}
+                </p>
+              )}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                <button
+                  style={s.btnSecondary}
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteError('') }}
+                  disabled={deleteLoading}
+                >
+                  Annulla
+                </button>
+                <button
+                  style={s.btnDangerSolid}
+                  onClick={handleDeleteAccount}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading ? 'Cancellazione in corso...' : 'Sì, elimina tutto'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -150,7 +253,9 @@ const s = {
     borderRadius: '16px',
     padding: '1.75rem',
     width: '100%',
-    maxWidth: '500px',
+    maxWidth: '520px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
     gap: '4px'
@@ -264,7 +369,7 @@ const s = {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    maxHeight: '240px',
+    maxHeight: '180px',
     overflowY: 'auto'
   },
   fileRow: {
@@ -291,5 +396,48 @@ const s = {
     background: 'rgba(124,109,250,0.12)',
     color: '#a99bfc',
     flexShrink: 0
+  },
+  gdprSection: {
+    marginTop: '20px',
+    paddingTop: '16px',
+    borderTop: '1px solid #1e1e23'
+  },
+  btnDangerOutline: {
+    padding: '6px 12px',
+    border: '1px solid rgba(248,113,113,0.3)',
+    borderRadius: '6px',
+    background: 'transparent',
+    color: '#f87171',
+    fontSize: '12px',
+    cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif'
+  },
+  deleteConfirmBox: {
+    marginTop: '12px',
+    padding: '12px',
+    background: '#201010',
+    border: '1px solid rgba(248,113,113,0.3)',
+    borderRadius: '8px'
+  },
+  btnSecondary: {
+    padding: '6px 12px',
+    border: '1px solid #2a2a2f',
+    borderRadius: '6px',
+    background: 'transparent',
+    color: '#9b9ba8',
+    fontSize: '12px',
+    cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif'
+  },
+  btnDangerSolid: {
+    padding: '6px 14px',
+    border: 'none',
+    borderRadius: '6px',
+    background: '#dc2626',
+    color: '#fff',
+    fontSize: '12px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif'
   }
 }

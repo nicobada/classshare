@@ -12,6 +12,7 @@ import AdminPanel from './AdminPanel'
 import PreviewModal from '../components/PreviewModal'
 import EditModal from '../components/EditModal'
 import ProfileModal from '../components/ProfileModal'
+import PrivacyModal from '../components/PrivacyModal'
 import {
   NAV_ITEMS, CODE_EXTS, IMAGE_EXTS, CAT_COLORS, EXT_LABELS,
   getExt, fmtSize, fmtDate, initials, avatarColor, forceDownload
@@ -29,6 +30,7 @@ export default function Dashboard() {
   const [previewFile, setPreviewFile] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [showPrivacy, setShowPrivacy] = useState(false)
   const [editFile, setEditFile] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640)
 
@@ -155,6 +157,9 @@ export default function Dashboard() {
               ⚙️ Admin
             </button>
           )}
+          <button style={s.adminBtn} onClick={() => setShowPrivacy(true)}>
+            🛡️ Privacy & GDPR
+          </button>
           <div style={s.profileBar} onClick={() => setShowProfile(true)}>
             <div style={{ ...s.avatar, background: avatarColor(profile?.name || user?.email) }}>
               {initials(profile?.name || user?.email)}
@@ -425,6 +430,7 @@ export default function Dashboard() {
           onSave={updated => setFiles(fs => fs.map(f => f.id === updated.id ? updated : f))}
         />
       )}
+      {showPrivacy && <PrivacyModal onClose={() => setShowPrivacy(false)} />}
     </div>
   )
 }

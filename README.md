@@ -171,6 +171,18 @@ service cloud.firestore {
 
 ---
 
+## 🇪🇺 Privacy & GDPR Compliance (Privacy by Design)
+
+ClassShare is engineered in strict accordance with the **EU General Data Protection Regulation (GDPR - Regulation EU 2016/679)** and the **ePrivacy Directive**:
+
+- **🧩 Data Minimization (Art. 5 GDPR):** Only strictly essential identifiers are stored: display name, email, and files explicitly shared by the user. No telemetry, third-party marketing, or personal profiling.
+- **🍪 Zero Third-Party Trackers:** No analytics beacons, tracking pixels, or marketing cookies. Only secure first-party authentication session tokens are utilized, eliminating intrusive cookie banner requirements under European law.
+- **🗑️ Right to Erasure / "Right to be Forgotten" (Art. 17 GDPR):** Users have full self-service control. Directly from their profile, users can permanently delete their authentication account, Firestore profile metadata, and all uploaded files from cloud object storage in a cascading purge.
+- **🔒 Data Security & Infrastructure (Art. 32 GDPR):** Transport security via TLS/HTTPS, encrypted storage at rest (Google Cloud & Supabase EU data centers), and Granular Security Rules enforcing ownership verification on all read/write/delete operations.
+- **📜 Transparent Privacy Notice:** Built-in modal disclosure accessible from both the authentication screen and the main dashboard.
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
